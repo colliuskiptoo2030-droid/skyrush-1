@@ -264,107 +264,42 @@
   </div>
 
   <!-- LOGIN MODAL -->
-<div class="modal" id="loginModal">
-  <div class="modal-card">
-    <button class="close-modal" onclick="closeModal('loginModal')">✕</button>
-
-    <h2>Login to SkyRush</h2>
-
-    <label>Email Address</label>
-    <input
-      id="loginEmail"
-      type="email"
-      placeholder="Enter your email"
-      autocomplete="email"
-    >
-
-    <label>Password</label>
-    <input
-      id="loginPass"
-      type="password"
-      placeholder="Enter your password"
-      autocomplete="current-password"
-    >
-
-    <button
-      class="btn btn-bet"
-      style="width:100%; margin-top:10px;"
-      onclick="processAuth('login')"
-    >
-      Login
-    </button>
-
-    <p id="loginMessage"
-       style="margin-top:12px;text-align:center;font-size:13px;">
-    </p>
-
-    <p style="text-align:center;margin-top:15px;font-size:13px;">
-      Don't have an account?
-      <a href="#" onclick="closeModal('loginModal');openModal('regModal');return false;">
-        Register
-      </a>
-    </p>
+  <div class="modal" id="loginModal">
+    <div class="modal-card">
+      <button class="close-modal" onclick="closeModal('loginModal')">✕</button>
+      <h2>Login to SkyRush</h2>
+      <label>Email Address</label>
+      <input id="loginEmail" type="email" placeholder="Enter your email" autocomplete="email">
+      <label>Password</label>
+      <input id="loginPass" type="password" placeholder="Enter your password" autocomplete="current-password">
+      <button class="btn btn-bet" style="width:100%; margin-top:10px;" onclick="processAuth('login')">Login</button>
+      <p id="loginMessage" style="margin-top:12px;text-align:center;font-size:13px;"></p>
+      <p style="text-align:center;margin-top:15px;font-size:13px;">
+        Don't have an account? <a href="#" onclick="closeModal('loginModal');openModal('regModal');return false;">Register</a>
+      </p>
+    </div>
   </div>
-</div>
 
   <!-- REGISTER MODAL -->
-<div class="modal" id="regModal">
-  <div class="modal-card">
-    <button class="close-modal" onclick="closeModal('regModal')">✕</button>
-
-    <h2>Create SkyRush Account</h2>
-
-    <label>Display Name</label>
-    <input
-      id="regName"
-      placeholder="Choose a display name"
-      autocomplete="name"
-    >
-
-    <label>Email Address</label>
-    <input
-      id="regEmail"
-      type="email"
-      placeholder="Enter your email"
-      autocomplete="email"
-    >
-
-    <label>Password</label>
-    <input
-      id="regPass"
-      type="password"
-      placeholder="Create a password"
-      autocomplete="new-password"
-    >
-
-    <label>Confirm Password</label>
-    <input
-      id="regPassConfirm"
-      type="password"
-      placeholder="Confirm your password"
-      autocomplete="new-password"
-    >
-
-    <button
-      class="btn btn-bet"
-      style="width:100%;margin-top:10px;"
-      onclick="processAuth('register')"
-    >
-      Create Account
-    </button>
-
-    <p id="regMessage"
-       style="margin-top:12px;text-align:center;font-size:13px;">
-    </p>
-
-    <p style="text-align:center;margin-top:15px;font-size:13px;">
-      Already have an account?
-      <a href="#" onclick="closeModal('regModal');openModal('loginModal');return false;">
-        Login
-      </a>
-    </p>
+  <div class="modal" id="regModal">
+    <div class="modal-card">
+      <button class="close-modal" onclick="closeModal('regModal')">✕</button>
+      <h2>Create SkyRush Account</h2>
+      <label>Display Name</label>
+      <input id="regName" placeholder="Choose a display name" autocomplete="name">
+      <label>Email Address</label>
+      <input id="regEmail" type="email" placeholder="Enter your email" autocomplete="email">
+      <label>Password</label>
+      <input id="regPass" type="password" placeholder="Create a password" autocomplete="new-password">
+      <label>Confirm Password</label>
+      <input id="regPassConfirm" type="password" placeholder="Confirm your password" autocomplete="new-password">
+      <button class="btn btn-bet" style="width:100%;margin-top:10px;" onclick="processAuth('register')">Create Account</button>
+      <p id="regMessage" style="margin-top:12px;text-align:center;font-size:13px;"></p>
+      <p style="text-align:center;margin-top:15px;font-size:13px;">
+        Already have an account? <a href="#" onclick="closeModal('regModal');openModal('loginModal');return false;">Login</a>
+      </p>
+    </div>
   </div>
-</div>
 
   <script>
     // System State Variables
@@ -468,233 +403,89 @@
       }
     }
 
-   // ===============================
-// SKYRUSH AUTHENTICATION SYSTEM
-// ===============================
+    // ===============================
+    // SKYRUSH AUTHENTICATION SYSTEM
+    // ===============================
 
-function getUsers() {
-  return JSON.parse(localStorage.getItem('skyrush_users') || '[]');
-}
-
-function saveUsers(users) {
-  localStorage.setItem('skyrush_users', JSON.stringify(users));
-}
-
-function showAuthMessage(type, message, success = false) {
-  const el = type === 'login'
-    ? $('loginMessage')
-    : $('regMessage');
-
-  if (!el) return;
-
-  el.textContent = message;
-  el.style.color = success ? '#22c55e' : '#ff6b6b';
-}
-
-function processAuth(type) {
-
-  // =========================
-  // REGISTER
-  // =========================
-
-  if (type === 'register') {
-
-    const name = $('regName').value.trim();
-    const email = $('regEmail').value.trim().toLowerCase();
-    const password = $('regPass').value;
-    const confirmPassword = $('regPassConfirm').value;
-
-    if (!name || !email || !password || !confirmPassword) {
-      showAuthMessage(
-        'register',
-        'Please fill in all fields.'
-      );
-      return;
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('skyrush_users') || '[]');
     }
 
-    if (name.length < 2) {
-      showAuthMessage(
-        'register',
-        'Display name must be at least 2 characters.'
-      );
-      return;
+    function saveUsers(users) {
+      localStorage.setItem('skyrush_users', JSON.stringify(users));
     }
 
-    if (!email.includes('@')) {
-      showAuthMessage(
-        'register',
-        'Please enter a valid email.'
-      );
-      return;
+    function showAuthMessage(type, message, success = false) {
+      const el = type === 'login' ? $('loginMessage') : $('regMessage');
+      if (!el) return;
+      el.textContent = message;
+      el.style.color = success ? '#22c55e' : '#ff6b6b';
     }
 
-    if (password.length < 6) {
-      showAuthMessage(
-        'register',
-        'Password must be at least 6 characters.'
-      );
-      return;
+    function processAuth(type) {
+      if (type === 'register') {
+        const name = $('regName').value.trim();
+        const email = $('regEmail').value.trim().toLowerCase();
+        const password = $('regPass').value;
+        const confirmPassword = $('regPassConfirm').value;
+
+        if (!name || !email || !password || !confirmPassword) return showAuthMessage('register', 'Please fill in all fields.');
+        if (name.length < 2) return showAuthMessage('register', 'Display name must be at least 2 characters.');
+        if (!email.includes('@')) return showAuthMessage('register', 'Please enter a valid email.');
+        if (password.length < 6) return showAuthMessage('register', 'Password must be at least 6 characters.');
+        if (password !== confirmPassword) return showAuthMessage('register', 'Passwords do not match.');
+
+        const users = getUsers();
+        if (users.find(user => user.email === email)) return showAuthMessage('register', 'An account with this email already exists.');
+
+        const newUser = { id: crypto.randomUUID(), name, email, password, balance: 1000, createdAt: new Date().toISOString() };
+        users.push(newUser);
+        saveUsers(users);
+
+        currentUser = { id: newUser.id, name: newUser.name, email: newUser.email };
+        localStorage.setItem('skyrush_user', JSON.stringify(currentUser));
+        balance = newUser.balance;
+        updateUserUI();
+        showAuthMessage('register', 'Account created successfully!', true);
+        setTimeout(() => closeModal('regModal'), 700);
+        return;
+      }
+
+      if (type === 'login') {
+        const email = $('loginEmail').value.trim().toLowerCase();
+        const password = $('loginPass').value;
+
+        if (!email || !password) return showAuthMessage('login', 'Enter your email and password.');
+
+        const users = getUsers();
+        const user = users.find(u => u.email === email);
+        if (!user) return showAuthMessage('login', 'No account found with that email.');
+        if (user.password !== password) return showAuthMessage('login', 'Incorrect password.');
+
+        currentUser = { id: user.id, name: user.name, email: user.email };
+        localStorage.setItem('skyrush_user', JSON.stringify(currentUser));
+        balance = Number(user.balance || 1000);
+        updateUserUI();
+        showAuthMessage('login', 'Login successful!', true);
+        setTimeout(() => closeModal('loginModal'), 700);
+      }
     }
 
-    if (password !== confirmPassword) {
-      showAuthMessage(
-        'register',
-        'Passwords do not match.'
-      );
-      return;
+    function logout() {
+      if (currentUser) {
+        const users = getUsers();
+        const index = users.findIndex(user => user.id === currentUser.id);
+        if (index !== -1) {
+          users[index].balance = balance;
+          saveUsers(users);
+        }
+      }
+      currentUser = null;
+      localStorage.removeItem('skyrush_user');
+      balance = 1000;
+      updateUserUI();
+      show('home');
     }
-
-    const users = getUsers();
-
-    const existingUser = users.find(
-      user => user.email === email
-    );
-
-    if (existingUser) {
-      showAuthMessage(
-        'register',
-        'An account with this email already exists.'
-      );
-      return;
-    }
-
-    const newUser = {
-      id: crypto.randomUUID(),
-      name: name,
-      email: email,
-
-      // Demo-only credential storage.
-      // Real production authentication must use a backend.
-      password: password,
-
-      balance: 1000,
-      createdAt: new Date().toISOString()
-    };
-
-    users.push(newUser);
-    saveUsers(users);
-
-    currentUser = {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email
-    };
-
-    localStorage.setItem(
-      'skyrush_user',
-      JSON.stringify(currentUser)
-    );
-
-    balance = newUser.balance;
-
-    updateUserUI();
-
-    showAuthMessage(
-      'register',
-      'Account created successfully!',
-      true
-    );
-
-    setTimeout(() => {
-      closeModal('regModal');
-    }, 700);
-
-    return;
-  }
-
-
-  // =========================
-  // LOGIN
-  // =========================
-
-  if (type === 'login') {
-
-    const email = $('loginEmail').value.trim().toLowerCase();
-    const password = $('loginPass').value;
-
-    if (!email || !password) {
-      showAuthMessage(
-        'login',
-        'Enter your email and password.'
-      );
-      return;
-    }
-
-    const users = getUsers();
-
-    const user = users.find(
-      u => u.email === email
-    );
-
-    if (!user) {
-      showAuthMessage(
-        'login',
-        'No account found with that email.'
-      );
-      return;
-    }
-
-    if (user.password !== password) {
-      showAuthMessage(
-        'login',
-        'Incorrect password.'
-      );
-      return;
-    }
-
-    currentUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email
-    };
-
-    localStorage.setItem(
-      'skyrush_user',
-      JSON.stringify(currentUser)
-    );
-
-    balance = Number(user.balance || 1000);
-
-    updateUserUI();
-
-    showAuthMessage(
-      'login',
-      'Login successful!',
-      true
-    );
-
-    setTimeout(() => {
-      closeModal('loginModal');
-    }, 700);
-  }
-}
-
-  function logout() {
-
-  // Save current balance before logging out
-  if (currentUser) {
-    const users = getUsers();
-
-    const index = users.findIndex(
-      user => user.id === currentUser.id
-    );
-
-    if (index !== -1) {
-      users[index].balance = balance;
-      saveUsers(users);
-    }
-  }
-
-  currentUser = null;
-
-  localStorage.removeItem('skyrush_user');
-
-  balance = 1000;
-
-  updateUserUI();
-
-  show('home');
-}
 
     function updateUserUI() {
       if (currentUser) {
@@ -708,13 +499,13 @@ function processAuth(type) {
         $('loginNavBtn').onclick = () => openModal('loginModal');
         $('regNavBtn').style.display = 'inline-flex';
       }
+      renderUI();
     }
 
     // Dual Bet Actions
     function handleBetAction(p) {
       const b = bets[p];
       if (inRound) {
-        // Cashout Action
         if (b.active && !b.cashed) {
           b.cashed = true;
           b.payout = b.amount * mult;
@@ -726,7 +517,6 @@ function processAuth(type) {
           renderUI();
         }
       } else {
-        // Toggle/Place Bet
         if (!b.active) {
           let amt = parseFloat($(`b${p}Amount`).value);
           if (!amt || amt < 10 || amt > balance) return alert('Invalid virtual bet amount');
@@ -737,7 +527,6 @@ function processAuth(type) {
           $(`p${p}Status`).style.color = '#ffb62e';
           renderUI();
         } else {
-          // Cancel queued bet
           balance += b.amount; volume -= b.amount;
           b.active = false;
           $(`p${p}Status`).textContent = '—';
@@ -881,123 +670,136 @@ function processAuth(type) {
         if (p.opacity <= 0) particles.splice(idx, 1);
       });
 
-      // 4. Render Avatar / Explosion
-      if (!crashed) {
-        ctx.font = '36px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(avatarChoice, currentX, currentY);
-      } else {
-        // Crash Explosion
-        ctx.font = '42px Arial';
-        ctx.fillText('💥', currentX, currentY);
-      }
+      // 4. Draw Avatar Emoji
+      ctx.font = '36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(avatarChoice, currentX, currentY);
     }
 
-    // Engine Core Flight Controller
+    // Core Game Loop & Flight Cycle
+    function runGameLoop() {
+      roundNo++;
+      mult = 1.00;
+      inRound = false;
+      
+      // Determine crash target using standard distribution (1.00x to 15.00x)
+      crashPoint = Math.random() < 0.1 ? 1.00 : parseFloat((Math.pow(Math.random(), -0.85)).toFixed(2));
+      if (crashPoint < 1) crashPoint = 1.00;
+
+      $('stateBadge').textContent = 'Next round starting soon...';
+      $('stateBadge').style.color = '#8e9bb0';
+      $('mult').classList.remove('crashed');
+      $('mult').textContent = '1.00x';
+      
+      generateSimulatedPlayers();
+      renderUI();
+
+      let delay = 3000;
+      let startTime = null;
+
+      function countdownStep(timestamp) {
+        if (!startTime) startTime = timestamp;
+        let elapsed = timestamp - startTime;
+        let remaining = Math.max(0, ((delay - elapsed) / 1000)).toFixed(1);
+        $('stateBadge').textContent = `Flying in ${remaining}s`;
+
+        if (elapsed < delay) {
+          requestAnimationFrame(countdownStep);
+        } else {
+          startFlight();
+        }
+      }
+      requestAnimationFrame(countdownStep);
+    }
+
     function startFlight() {
       inRound = true;
-      mult = 1.00;
-      crashPoint = Math.max(1.01, Math.pow(Math.random(), 1.7) * 10 + 1.01);
-      
-      // Update seeds and status
-      $('seedHash').textContent = 'Hash: ' + Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>b.toString(16).padStart(2,'0')).join('');
-      $('stateBadge').textContent = 'FLIGHT IN PROGRESS';
-      $('mult').classList.remove('crashed');
-      
-      // Reset Bets
+      $('stateBadge').textContent = 'FLEW AWAY RISK ACTIVE';
+      $('stateBadge').style.color = '#22d39a';
+
+      // Lock status labels
       [1, 2].forEach(p => {
         if (bets[p].active) {
-          bets[p].cashed = false;
-          bets[p].payout = 0;
           $(`p${p}Status`).textContent = 'In Flight';
           $(`p${p}Status`).style.color = '#22d39a';
         }
       });
 
-      generateSimulatedPlayers();
-      renderUI();
+      let flightStart = performance.now();
+      let duration = Math.max(1500, Math.log(crashPoint) * 4000);
 
-      let startTime = performance.now();
+      function flightStep(now) {
+        let elapsed = now - flightStart;
+        let progress = Math.min(1, elapsed / duration);
 
-      function tick(now) {
-        if (!inRound) return;
-        let s = (now - startTime) / 1000;
-        mult = 1 + Math.pow(s * 0.65, 1.4);
+        // Exponential multiplier increase formula
+        mult = parseFloat((1 + Math.pow(progress, 2) * (crashPoint - 1)).toFixed(2));
+        if (mult > crashPoint) mult = crashPoint;
 
         $('mult').textContent = mult.toFixed(2) + 'x';
+        drawGameScene(progress, false);
+        updateSimulatedPlayers();
 
-        // Check Auto Cashouts
+        // Check Auto-Cashout for Panels
         [1, 2].forEach(p => {
-          let target = parseFloat($(`b${p}Auto`).value);
-          if (bets[p].active && !bets[p].cashed && target && mult >= target) {
+          let autoVal = parseFloat($(`b${p}Auto`).value);
+          if (bets[p].active && !bets[p].cashed && autoVal && mult >= autoVal) {
             handleBetAction(p);
           }
         });
 
-        updateSimulatedPlayers();
+        renderUI();
 
-        let progressPct = Math.min(1, (mult - 1) / Math.max(1, crashPoint - 1));
-        drawGameScene(progressPct, false);
-
-        if (mult >= crashPoint) {
-          triggerCrash();
-          return;
+        if (progress < 1 && mult < crashPoint) {
+          animationFrame = requestAnimationFrame(flightStep);
+        } else {
+          endFlight();
         }
-
-        animationFrame = requestAnimationFrame(tick);
       }
-
-      animationFrame = requestAnimationFrame(tick);
+      animationFrame = requestAnimationFrame(flightStep);
     }
 
-    function triggerCrash() {
+    function endFlight() {
       inRound = false;
-      cancelAnimationFrame(animationFrame);
       playSound('crash');
-      roundNo++;
-
       $('mult').textContent = crashPoint.toFixed(2) + 'x';
       $('mult').classList.add('crashed');
       $('stateBadge').textContent = 'CRASHED';
+      $('stateBadge').style.color = '#ff3d71';
 
-      // Process un-cashed bets
+      // Process uncashed active bets as losses
       [1, 2].forEach(p => {
         if (bets[p].active && !bets[p].cashed) {
+          addHistory(p, bets[p].amount, 'CRASH', 0);
           $(`p${p}Status`).textContent = 'Crashed';
           $(`p${p}Status`).style.color = '#ff3d71';
-          addHistory(p, bets[p].amount, 'Crash', 0);
         }
         bets[p].active = false;
+        bets[p].cashed = false;
+        bets[p].payout = 0;
       });
 
-      // Add Pill
-      let pill = document.createElement('span');
-      pill.className = 'pill ' + (crashPoint >= 5 ? 'hot' : '');
+      // Append Round History Pill
+      let pill = document.createElement('div');
+      pill.className = `pill ${crashPoint >= 2.0 ? 'hot' : ''}`;
       pill.textContent = crashPoint.toFixed(2) + 'x';
       $('rounds').prepend(pill);
 
       drawGameScene(1, true);
       renderUI();
 
-      setTimeout(prepareNextRound, 2500);
+      // Trigger next round cycle after short pause
+      setTimeout(runGameLoop, 3500);
     }
 
-    function prepareNextRound() {
-      $('stateBadge').textContent = 'Waiting for next round...';
-      $('mult').textContent = '1.00x';
-      $('mult').classList.remove('crashed');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setTimeout(startFlight, 1500);
-    }
-
-    // M-Pesa STK Push Payment Request Function
+    // Backend M-Pesa Integration API Endpoint Trigger
     async function sendPaymentRequest() {
       const phone = document.getElementById('stkPhone').value;
       const amount = document.getElementById('stkAmount').value;
 
       try {
-        const response = await fetch('http://localhost:3000/api/v1/mpesa/stkpush', {
+        const response = await fetch('/api/v1/mpesa/stkpush', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: phone, amount: amount })
@@ -1011,59 +813,35 @@ function processAuth(type) {
           alert("Error: " + (data.error || "Failed to trigger STK"));
         }
       } catch (err) {
-        alert("Could not connect to backend server. Make sure 'node server.js' is running on port 3000.");
+        alert("Could not connect to backend server. Ensure your backend service is running and configured correctly.");
       }
     }
 
-    // ===============================
-// RESTORE LOGGED-IN USER
-// ===============================
-
-const savedUser = localStorage.getItem('skyrush_user');
-
-if (savedUser) {
-
-  try {
-
-    currentUser = JSON.parse(savedUser);
-
-    const users = getUsers();
-
-    const user = users.find(
-      u => u.id === currentUser.id
-    );
-
-    if (user) {
-      balance = Number(user.balance || 1000);
-    } else {
-      currentUser = null;
-      localStorage.removeItem('skyrush_user');
-    }
-
-  } catch (error) {
-
-    console.error(
-      'Could not restore user session:',
-      error
-    );
-
-    currentUser = null;
-    localStorage.removeItem('skyrush_user');
-  }
-}
-
-updateUserUI();
-      // Populate pills
-      for (let i = 0; i < 8; i++) {
-        let val = Math.max(1.01, Math.pow(Math.random(), 1.7) * 10 + 1.01);
-        let pill = document.createElement('span');
-        pill.className = 'pill ' + (val >= 5 ? 'hot' : '');
-        pill.textContent = val.toFixed(2) + 'x';
-        $('rounds').appendChild(pill);
+    // Initialization Sequence
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      
+      // Auto-restore persisted user session
+      const stored = localStorage.getItem('skyrush_user');
+      if (stored) {
+        try {
+          currentUser = JSON.parse(stored);
+          const users = getUsers();
+          const match = users.find(u => u.id === currentUser.id);
+          if (match) balance = Number(match.balance || 1000);
+        } catch(e) {}
       }
-      renderUI();
-      setTimeout(startFlight, 1000);
-  
+      
+      updateUserUI();
+      
+      // Generate Seed Hash Mock
+      let seedHex = '';
+      for(let i=0; i<32; i++) seedHex += Math.floor(Math.random()*16).toString(16);
+      $('seedHash').textContent = 'Hash: ' + seedHex.substring(0, 16) + '...';
+
+      // Start initial game round engine
+      runGameLoop();
+    });
   </script>
 </body>
 </html>
