@@ -16,22 +16,45 @@ let platformStats = {
   totalPayouts: 0
 };
 
-// Queue of crash points (Index 0 = current live game, 1 = Next, 2 = Next+1, 3 = Next+2)
-let crashQueue = [2.45, 1.80, 5.12, 1.15, 12.40];
-
+// Generate infinite queue of multipliers
+let crashQueue = [];
 function generateCrashMultiplier() {
-  return (Math.random() * (10 - 1) + 1).toFixed(2);
+  // Generates random crash between 1.10x and 15.00x
+  return parseFloat((1.10 + Math.random() * (15 - 1.10)).toFixed(2));
 }
 
-// Keep a healthy queue of future rounds
-function replenishQueue() {
-  while (crashQueue.length < 10) {
+for (let i = 0; i < 20; i++) {
+  crashQueue.push(generateCrashMultiplier());
+}
+
+// Live state engine running continuously on backend
+let currentRoundIndex = 0;
+let roundStartTime = Date.now();
+
+setInterval(() => {
+  // Auto-advance to next round every 12 seconds
+  if (Date.now() - roundStartTime > 12000) {
+    currentRoundIndex++;
+    roundStartTime = Date.now();
     crashQueue.push(generateCrashMultiplier());
   }
-}
-replenishQueue();
+}, 1000);
 
-// Basic HTTP Auth Middleware
+// API endpoint returning current engine state
+app.get('/api/live-state', (req, res) => {
+  const elapsedTime = (Date.now() - roundStartTime) / 1000;
+  res.json({
+    elapsedTime: elapsedTime,
+    currentCrash: crashQueue[currentRoundIndex],
+    roundPlus1: crashQueue[currentRoundIndex + 1],
+    roundPlus2: crashQueue[currentRoundIndex + 2],
+    roundPlus3: crashQueue[currentRoundIndex + 3], // Admin +3 Simulator target
+    roundPlus4: crashQueue[currentRoundIndex + 4],
+    roundIndex: currentRoundIndex
+  });
+});
+
+// Basic HTTP Auth
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -47,13 +70,13 @@ function adminAuth(req, res, next) {
   }
 }
 
-// Protected Secret Admin Route
+// Secret Admin Route
 app.get('/admin', adminAuth, (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
       <head>
-        <title>SkyRush Owner Dashboard - Live Simulator</title>
+        <title>SkyRush Owner Dashboard - Live Continuous Simulator</title>
         <style>
           body { font-family: -apple-system, sans-serif; background: #0b0e14; color: #fff; padding: 25px; margin: 0; }
           .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -74,7 +97,7 @@ app.get('/admin', adminAuth, (req, res) => {
       </head>
       <body>
         <h1>SkyRush Control Center</h1>
-        <p style="color: #8b949e; margin-bottom: 20px;">Live Visual Plane Telemetry & Future Crash Simulator</p>
+        <p style="color: #8b949e; margin-bottom: 20px;">Continuous Real-Time Telemetry Engine</p>
 
         <div class="grid">
           <div class="card"><h3>Total Registered</h3><p>${platformStats.totalUsers}</p></div>
@@ -84,17 +107,17 @@ app.get('/admin', adminAuth, (req, res) => {
         </div>
 
         <div class="sim-container">
-          <!-- STAGE 1: CURRENT PUBLIC ROUND -->
+          <!-- PUBLIC LIVE ROUND -->
           <div class="stage">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <h3>Public Live Screen</h3>
-              <span class="badge badge-live">ROUND #0 (NOW PLAYING)</span>
+              <span class="badge badge-live" id="roundTag">ROUND #0</span>
             </div>
             <canvas id="liveCanvas"></canvas>
             <h2 id="liveText" style="text-align:center; color:#00e676; margin:10px 0 0 0;">1.00x</h2>
           </div>
 
-          <!-- STAGE 2: ADVANCED SIMULATOR (+3 ROUNDS AHEAD) -->
+          <!-- ADMIN +3 SIMULATOR -->
           <div class="stage">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <h3>Admin Simulator Preview</h3>
@@ -106,71 +129,81 @@ app.get('/admin', adminAuth, (req, res) => {
         </div>
 
         <div class="queue-list">
-          <h3 style="margin-top:0; color:#00e676;">Pre-Generated Multiplier Sequence</h3>
-          <p><strong>Current Public Crash Point:</strong> <span style="color:#ff5252">${crashQueue[0]}x</span></p>
-          <p><strong>Round +1 Ahead:</strong> ${crashQueue[1]}x</p>
-          <p><strong>Round +2 Ahead:</strong> ${crashQueue[2]}x</p>
-          <p><strong>Round +3 Ahead (Simulator Screen):</strong> <span style="color:#29b6f6">${crashQueue[3]}x</span></p>
-          <p><strong>Round +4 Ahead:</strong> ${crashQueue[4]}x</p>
+          <h3 style="margin-top:0; color:#00e676;">Live Multiplier Queue Stream</h3>
+          <p><strong>Current Public Target:</strong> <span id="q0" style="color:#ff5252">--</span></p>
+          <p><strong>Round +1 Ahead:</strong> <span id="q1">--</span></p>
+          <p><strong>Round +2 Ahead:</strong> <span id="q2">--</span></p>
+          <p><strong>Round +3 Ahead (Simulator Screen):</strong> <span id="q3" style="color:#29b6f6">--</span></p>
+          <p><strong>Round +4 Ahead:</strong> <span id="q4">--</span></p>
         </div>
 
         <script>
-          // Current live crash target and +3 future crash target
-          const liveTarget = parseFloat("${crashQueue[0]}");
-          const simTarget = parseFloat("${crashQueue[3]}");
+          const liveCanvas = document.getElementById('liveCanvas');
+          const simCanvas = document.getElementById('simCanvas');
+          const ctxLive = liveCanvas.getContext('2d');
+          const ctxSim = simCanvas.getContext('2d');
 
-          function createFlightSimulator(canvasId, textId, targetMultiplier, color) {
-            const canvas = document.getElementById(canvasId);
-            const ctx = canvas.getContext('2d');
-            let currentMult = 1.00;
-            let progress = 0;
+          function drawFlight(ctx, canvas, elapsed, targetMult, color, textId) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate real-time multiplier progression
+            let currentMult = 1.00 + (elapsed * 0.4);
+            let progress = Math.min(1, (currentMult - 1.00) / (targetMult - 1.00));
 
-            function draw() {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              
-              // Draw Flight Curve Line
-              ctx.beginPath();
-              ctx.moveTo(10, canvas.height - 10);
+            if (currentMult < targetMult) {
               const x = 10 + (progress * (canvas.width - 40));
               const y = (canvas.height - 10) - (progress * (canvas.height - 40));
-              
+
+              ctx.beginPath();
+              ctx.moveTo(10, canvas.height - 10);
               ctx.quadraticCurveTo(x / 2, canvas.height - 10, x, y);
               ctx.strokeStyle = color;
               ctx.lineWidth = 3;
               ctx.stroke();
 
-              // Draw Flying Rocket / Plane Indicator
               ctx.fillStyle = "#ffffff";
               ctx.beginPath();
               ctx.arc(x, y, 6, 0, Math.PI * 2);
               ctx.fill();
 
-              if (currentMult < targetMultiplier) {
-                currentMult += 0.01 + (currentMult * 0.002);
-                progress = Math.min(1, progress + 0.005);
-                document.getElementById(textId).innerText = currentMult.toFixed(2) + "x";
-                requestAnimationFrame(draw);
-              } else {
-                ctx.fillStyle = "#ff1744";
-                ctx.font = "bold 16px sans-serif";
-                ctx.fillText("FLEW AWAY @ " + targetMultiplier + "x", canvas.width / 4, canvas.height / 2);
-                document.getElementById(textId).innerText = "FLEW AWAY!";
-                document.getElementById(textId).style.color = "#ff1744";
-              }
+              document.getElementById(textId).innerText = currentMult.toFixed(2) + "x";
+              document.getElementById(textId).style.color = color;
+            } else {
+              ctx.fillStyle = "#ff1744";
+              ctx.font = "bold 16px sans-serif";
+              ctx.fillText("CRASHED @ " + targetMult + "x", canvas.width / 4, canvas.height / 2);
+              document.getElementById(textId).innerText = "FLEW AWAY (" + targetMult + "x)";
+              document.getElementById(textId).style.color = "#ff1744";
             }
-            draw();
           }
 
-          // Run Public Plane & Admin +3 Simulator simultaneously
-          createFlightSimulator('liveCanvas', 'liveText', liveTarget, '#00e676');
-          createFlightSimulator('simCanvas', 'simText', simTarget, '#29b6f6');
+          async function syncEngine() {
+            try {
+              const res = await fetch('/api/live-state');
+              const data = await res.json();
+
+              document.getElementById('roundTag').innerText = "ROUND #" + data.roundIndex;
+              document.getElementById('q0').innerText = data.currentCrash + "x";
+              document.getElementById('q1').innerText = data.roundPlus1 + "x";
+              document.getElementById('q2').innerText = data.roundPlus2 + "x";
+              document.getElementById('q3').innerText = data.roundPlus3 + "x";
+              document.getElementById('q4').innerText = data.roundPlus4 + "x";
+
+              drawFlight(ctxLive, liveCanvas, data.elapsedTime, data.currentCrash, '#00e676', 'liveText');
+              drawFlight(ctxSim, simCanvas, data.elapsedTime, data.roundPlus3, '#29b6f6', 'simText');
+            } catch (e) {
+              console.error(e);
+            }
+          }
+
+          // Fetch state and re-render every 100ms for smooth live motion
+          setInterval(syncEngine, 100);
         </script>
       </body>
     </html>
   `);
 });
 
-// Endpoint triggered on game bet
 app.post('/api/v1/mpesa/stkpush', (req, res) => {
   const { amount } = req.body;
   platformStats.totalDeposited += Number(amount) || 0;
