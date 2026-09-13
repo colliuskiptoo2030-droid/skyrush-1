@@ -6,8 +6,9 @@ const axios = require('axios');
 
 const app = express();
 
+// Body Parser Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, './')));
+app.use(express.urlencoded({ extended: true }));
 
 // --- AUTHENTICATION ---
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -50,10 +51,10 @@ app.get('/api/live-state', (req, res) => {
   const elapsedTime = (Date.now() - roundStartTime) / 1000;
   res.json({
     elapsedTime: elapsedTime,
-    currentCrash: crashQueue[currentRoundIndex],       // Round 0 (Public)
-    nextCrash: crashQueue[currentRoundIndex + 1],       // Round +1 (Admin Simulator)
-    roundPlus2: crashQueue[currentRoundIndex + 2],
-    roundPlus3: crashQueue[currentRoundIndex + 3],
+    currentCrash: crashQueue[currentRoundIndex] || 1.00,       // Round 0 (Public)
+    nextCrash: crashQueue[currentRoundIndex + 1] || 1.00,       // Round +1 (Admin Simulator)
+    roundPlus2: crashQueue[currentRoundIndex + 2] || 1.00,
+    roundPlus3: crashQueue[currentRoundIndex + 3] || 1.00,
     roundIndex: currentRoundIndex
   });
 });
@@ -62,14 +63,14 @@ app.get('/api/live-state', (req, res) => {
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    res.setHeader('WWW-Authenticate', 'Basic');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Admin Area"');
     return res.status(401).send('Authentication required.');
   }
-  const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+  const auth = Buffer.from(authHeader.split(' ')[1] || '', 'base64').toString().split(':');
   if (auth[0] === ADMIN_USER && auth[1] === ADMIN_PASS) {
     return next();
   } else {
-    res.setHeader('WWW-Authenticate', 'Basic');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Admin Area"');
     return res.status(401).send('Invalid credentials.');
   }
 }
@@ -90,7 +91,7 @@ app.get('/admin', adminAuth, (req, res) => {
           
           .sim-container { display: flex; gap: 20px; flex-wrap: wrap; }
           .stage { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; flex: 1; min-width: 320px; }
-          canvas { background: #0d1117; border-radius: 6px; width: 100%; height: 230px; }
+          canvas { background: #0d1117; border-radius: 6px; width: 100%; height: 230px; display: block; }
           
           .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
           .badge-live { background: #d32f2f; color: #fff; }
@@ -111,7 +112,6 @@ app.get('/admin', adminAuth, (req, res) => {
         </div>
 
         <div class="sim-container">
-          <!-- PUBLIC LIVE CANVASES -->
           <div class="stage">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <h3>Public Live Screen (Current Round)</h3>
@@ -121,7 +121,6 @@ app.get('/admin', adminAuth, (req, res) => {
             <h2 id="liveText" style="text-align:center; color:#00e676; margin:10px 0 0 0;">1.00x</h2>
           </div>
 
-          <!-- ADMIN PREVIEW CANVASES -->
           <div class="stage">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <h3>Admin Simulator (Immediate Next Round)</h3>
@@ -148,7 +147,6 @@ app.get('/admin', adminAuth, (req, res) => {
           function renderFlight(ctx, canvas, elapsed, targetMult, color, textId) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Shared exact exponential curve calculation
             let currentMult = parseFloat((1.00 + Math.pow(elapsed, 1.7) * 0.12).toFixed(2));
 
             if (currentMult < targetMult && elapsed < 10) {
@@ -156,7 +154,6 @@ app.get('/admin', adminAuth, (req, res) => {
               const x = 20 + (progress * (canvas.width - 50));
               const y = (canvas.height - 20) - (Math.pow(progress, 0.85) * (canvas.height - 50));
 
-              // Curve Line
               ctx.beginPath();
               ctx.moveTo(20, canvas.height - 20);
               ctx.quadraticCurveTo(x / 2, canvas.height - 20, x, y);
@@ -164,7 +161,6 @@ app.get('/admin', adminAuth, (req, res) => {
               ctx.lineWidth = 4;
               ctx.stroke();
 
-              // Rocket Node
               ctx.fillStyle = "#ffffff";
               ctx.beginPath();
               ctx.arc(x, y, 6, 0, Math.PI * 2);
@@ -173,7 +169,6 @@ app.get('/admin', adminAuth, (req, res) => {
               document.getElementById(textId).innerText = currentMult.toFixed(2) + "x";
               document.getElementById(textId).style.color = color;
             } else {
-              // Crashed state
               ctx.fillStyle = "#ff1744";
               ctx.font = "bold 18px sans-serif";
               ctx.textAlign = "center";
@@ -192,19 +187,18 @@ app.get('/admin', adminAuth, (req, res) => {
               document.getElementById('roundTag').innerText = "ROUND #" + data.roundIndex;
               document.getElementById('nextTag').innerText = "ROUND #" + (data.roundIndex + 1) + " (PREVIEW)";
               
-              document.getElementById('q0').innerText = data.currentCrash.toFixed(2) + "x";
-              document.getElementById('q1').innerText = data.nextCrash.toFixed(2) + "x";
-              document.getElementById('q2').innerText = data.roundPlus2.toFixed(2) + "x";
+              document.getElementById('q0').innerText = Number(data.currentCrash).toFixed(2) + "x";
+              document.getElementById('q1').innerText = Number(data.nextCrash).toFixed(2) + "x";
+              document.getElementById('q2').innerText = Number(data.roundPlus2).toFixed(2) + "x";
 
-              // Both render in parallel on Option A model
               renderFlight(ctxLive, liveCanvas, data.elapsedTime, data.currentCrash, '#00e676', 'liveText');
               renderFlight(ctxSim, simCanvas, data.elapsedTime, data.nextCrash, '#29b6f6', 'simText');
             } catch (e) {
-              console.error(e);
+              console.error('Sync Error:', e);
             }
           }
 
-          setInterval(syncEngine, 50);
+          setInterval(syncEngine, 100);
         </script>
       </body>
     </html>
@@ -239,10 +233,8 @@ async function getDarajaAccessToken() {
   return response.data.access_token;
 }
 
-
 function createTimestamp() {
   const now = new Date();
-
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
@@ -252,7 +244,6 @@ function createTimestamp() {
 
   return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
-
 
 app.post('/api/v1/mpesa/stkpush', async (req, res) => {
   try {
@@ -272,11 +263,8 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
       });
     }
 
-    // Get Daraja access token
     const accessToken = await getDarajaAccessToken();
-
     const timestamp = createTimestamp();
-
     const shortcode = process.env.DARAJA_SHORTCODE;
     const passkey = process.env.DARAJA_PASSKEY;
 
@@ -284,18 +272,14 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
       throw new Error('DARAJA_SHORTCODE or DARAJA_PASSKEY is missing');
     }
 
-    // Daraja password
     const password = Buffer
       .from(`${shortcode}${passkey}${timestamp}`)
       .toString('base64');
 
-    // Ensure Kenyan phone number is in 254XXXXXXXXX format
     let formattedPhone = String(phone).replace(/\s+/g, '');
-
     if (formattedPhone.startsWith('+')) {
       formattedPhone = formattedPhone.substring(1);
     }
-
     if (formattedPhone.startsWith('0')) {
       formattedPhone = '254' + formattedPhone.substring(1);
     }
@@ -323,8 +307,6 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
       }
     );
 
-    console.log('Daraja STK Response:', stkResponse.data);
-
     res.json({
       success: true,
       message: 'STK Push request sent',
@@ -348,23 +330,16 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
   }
 });
 
-
-// ===============================
-// DARAJA CALLBACK
-// ===============================
-
 app.post('/api/v1/mpesa/callback', (req, res) => {
-  console.log(
-    'M-Pesa Callback:',
-    JSON.stringify(req.body, null, 2)
-  );
-
-  // Always acknowledge the callback
+  console.log('M-Pesa Callback:', JSON.stringify(req.body, null, 2));
   res.json({
     ResultCode: 0,
     ResultDesc: 'Accepted'
   });
 });
+
+// Static Middleware & Catch-All placed strictly AFTER API Routes
+app.use(express.static(path.join(__dirname, './')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
