@@ -1,72 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>SkyRush Crash Game</title>
-  <style>
-    body { background: #0b0e14; color: #fff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .game-card { background: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 12px; text-align: center; width: 90%; max-width: 600px; }
-    canvas { background: #0d1117; border-radius: 8px; width: 100%; height: 280px; }
-    #multiplier { font-size: 3rem; font-weight: bold; color: #00e676; margin: 15px 0; }
-  </style>
-</head>
-<body>
-  <div class="game-card">
-    <h2 style="margin-top:0;">SkyRush Live</h2>
-    <canvas id="publicCanvas" width="550" height="280"></canvas>
-    <div id="multiplier">1.00x</div>
-  </div>
+<script>
+  const canvas = document.getElementById('canvas') || document.getElementById('publicCanvas');
+  const ctx = canvas.getContext('2d');
 
-  <script>
-    const canvas = document.getElementById('publicCanvas');
-    const ctx = canvas.getContext('2d');
+  function renderPublicFlight(elapsed, targetMult) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Exact exponential flight trajectory matching the server sync engine
+    let currentMult = parseFloat((1.00 + Math.pow(elapsed, 1.7) * 0.12).toFixed(2));
 
-    function renderPublicFlight(elapsed, targetMult) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (currentMult < targetMult && elapsed < 10) {
+      let progress = Math.min(1, elapsed / 10);
+      const x = 20 + (progress * (canvas.width - 50));
+      const y = (canvas.height - 20) - (Math.pow(progress, 0.85) * (canvas.height - 50));
+
+      // Flight Path Line
+      ctx.beginPath();
+      ctx.moveTo(20, canvas.height - 20);
+      ctx.quadraticCurveTo(x / 2, canvas.height - 20, x, y);
+      ctx.strokeStyle = "#00e676";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Rocket/Plane Marker
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      const multElem = document.getElementById('multiplier') || document.getElementById('liveText');
+      if (multElem) {
+        multElem.innerText = currentMult.toFixed(2) + "x";
+        multElem.style.color = "#00e676";
+      }
+    } else {
+      ctx.fillStyle = "#ff1744";
+      ctx.font = "bold 22px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("FLEW AWAY @ " + targetMult.toFixed(2) + "x", canvas.width / 2, canvas.height / 2);
       
-      let currentMult = parseFloat((1.00 + Math.pow(elapsed, 1.7) * 0.12).toFixed(2));
-
-      if (currentMult < targetMult && elapsed < 10) {
-        let progress = Math.min(1, elapsed / 10);
-        const x = 20 + (progress * (canvas.width - 50));
-        const y = (canvas.height - 20) - (Math.pow(progress, 0.85) * (canvas.height - 50));
-
-        ctx.beginPath();
-        ctx.moveTo(20, canvas.height - 20);
-        ctx.quadraticCurveTo(x / 2, canvas.height - 20, x, y);
-        ctx.strokeStyle = "#00e676";
-        ctx.lineWidth = 4;
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        document.getElementById('multiplier').innerText = currentMult.toFixed(2) + "x";
-        document.getElementById('multiplier').style.color = "#00e676";
-      } else {
-        ctx.fillStyle = "#ff1744";
-        ctx.font = "bold 22px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("FLEW AWAY @ " + targetMult.toFixed(2) + "x", canvas.width / 2, canvas.height / 2);
-        
-        document.getElementById('multiplier').innerText = "FLEW AWAY @ " + targetMult.toFixed(2) + "x";
-        document.getElementById('multiplier').style.color = "#ff1744";
+      const multElem = document.getElementById('multiplier') || document.getElementById('liveText');
+      if (multElem) {
+        multElem.innerText = "FLEW AWAY @ " + targetMult.toFixed(2) + "x";
+        multElem.style.color = "#ff1744";
       }
     }
+  }
 
-    async function syncPublicGame() {
-      try {
-        const res = await fetch('/api/live-state');
-        const data = await res.json();
-        renderPublicFlight(data.elapsedTime, data.currentCrash);
-      } catch (e) {
-        console.error(e);
-      }
+  async function syncPublicGame() {
+    try {
+      const res = await fetch('/api/live-state');
+      const data = await res.json();
+      renderPublicFlight(data.elapsedTime, data.currentCrash);
+    } catch (e) {
+      console.error("Game Sync Error:", e);
     }
+  }
 
-    setInterval(syncPublicGame, 50);
-  </script>
-</body>
-</html>
+  // Poll server state smoothly every 50ms
+  setInterval(syncPublicGame, 50);
+</script>
