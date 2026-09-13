@@ -264,27 +264,107 @@
   </div>
 
   <!-- LOGIN MODAL -->
-  <div class="modal" id="loginModal">
-    <div class="modal-card">
-      <button class="close-modal" onclick="closeModal('loginModal')">✕</button>
-      <h2>Login to Demo</h2>
-      <input id="loginName" placeholder="Display Name">
-      <input id="loginEmail" type="email" placeholder="Email Address">
-      <button class="btn btn-bet" style="width: 100%; margin-top: 10px;" onclick="processAuth('login')">Login</button>
-    </div>
+<div class="modal" id="loginModal">
+  <div class="modal-card">
+    <button class="close-modal" onclick="closeModal('loginModal')">✕</button>
+
+    <h2>Login to SkyRush</h2>
+
+    <label>Email Address</label>
+    <input
+      id="loginEmail"
+      type="email"
+      placeholder="Enter your email"
+      autocomplete="email"
+    >
+
+    <label>Password</label>
+    <input
+      id="loginPass"
+      type="password"
+      placeholder="Enter your password"
+      autocomplete="current-password"
+    >
+
+    <button
+      class="btn btn-bet"
+      style="width:100%; margin-top:10px;"
+      onclick="processAuth('login')"
+    >
+      Login
+    </button>
+
+    <p id="loginMessage"
+       style="margin-top:12px;text-align:center;font-size:13px;">
+    </p>
+
+    <p style="text-align:center;margin-top:15px;font-size:13px;">
+      Don't have an account?
+      <a href="#" onclick="closeModal('loginModal');openModal('regModal');return false;">
+        Register
+      </a>
+    </p>
   </div>
+</div>
 
   <!-- REGISTER MODAL -->
-  <div class="modal" id="regModal">
-    <div class="modal-card">
-      <button class="close-modal" onclick="closeModal('regModal')">✕</button>
-      <h2>Create Demo Account</h2>
-      <input id="regName" placeholder="Display Name">
-      <input id="regEmail" type="email" placeholder="Email Address">
-      <input id="regPass" type="password" placeholder="Password">
-      <button class="btn btn-bet" style="width: 100%; margin-top: 10px;" onclick="processAuth('register')">Create Account</button>
-    </div>
+<div class="modal" id="regModal">
+  <div class="modal-card">
+    <button class="close-modal" onclick="closeModal('regModal')">✕</button>
+
+    <h2>Create SkyRush Account</h2>
+
+    <label>Display Name</label>
+    <input
+      id="regName"
+      placeholder="Choose a display name"
+      autocomplete="name"
+    >
+
+    <label>Email Address</label>
+    <input
+      id="regEmail"
+      type="email"
+      placeholder="Enter your email"
+      autocomplete="email"
+    >
+
+    <label>Password</label>
+    <input
+      id="regPass"
+      type="password"
+      placeholder="Create a password"
+      autocomplete="new-password"
+    >
+
+    <label>Confirm Password</label>
+    <input
+      id="regPassConfirm"
+      type="password"
+      placeholder="Confirm your password"
+      autocomplete="new-password"
+    >
+
+    <button
+      class="btn btn-bet"
+      style="width:100%;margin-top:10px;"
+      onclick="processAuth('register')"
+    >
+      Create Account
+    </button>
+
+    <p id="regMessage"
+       style="margin-top:12px;text-align:center;font-size:13px;">
+    </p>
+
+    <p style="text-align:center;margin-top:15px;font-size:13px;">
+      Already have an account?
+      <a href="#" onclick="closeModal('regModal');openModal('loginModal');return false;">
+        Login
+      </a>
+    </p>
   </div>
+</div>
 
   <script>
     // System State Variables
@@ -388,21 +468,233 @@
       }
     }
 
-    // Auth Engine
-    function processAuth(type) {
-      let name = type === 'login' ? $('loginName').value : $('regName').value;
-      if (!name.trim()) name = 'Demo Pilot';
-      currentUser = { name: name };
-      localStorage.skyrush_user = JSON.stringify(currentUser);
-      updateUserUI();
-      closeModal('loginModal'); closeModal('regModal');
+   // ===============================
+// SKYRUSH AUTHENTICATION SYSTEM
+// ===============================
+
+function getUsers() {
+  return JSON.parse(localStorage.getItem('skyrush_users') || '[]');
+}
+
+function saveUsers(users) {
+  localStorage.setItem('skyrush_users', JSON.stringify(users));
+}
+
+function showAuthMessage(type, message, success = false) {
+  const el = type === 'login'
+    ? $('loginMessage')
+    : $('regMessage');
+
+  if (!el) return;
+
+  el.textContent = message;
+  el.style.color = success ? '#22c55e' : '#ff6b6b';
+}
+
+function processAuth(type) {
+
+  // =========================
+  // REGISTER
+  // =========================
+
+  if (type === 'register') {
+
+    const name = $('regName').value.trim();
+    const email = $('regEmail').value.trim().toLowerCase();
+    const password = $('regPass').value;
+    const confirmPassword = $('regPassConfirm').value;
+
+    if (!name || !email || !password || !confirmPassword) {
+      showAuthMessage(
+        'register',
+        'Please fill in all fields.'
+      );
+      return;
     }
 
-    function logout() {
-      currentUser = null;
-      localStorage.removeItem('skyrush_user');
-      updateUserUI();
+    if (name.length < 2) {
+      showAuthMessage(
+        'register',
+        'Display name must be at least 2 characters.'
+      );
+      return;
     }
+
+    if (!email.includes('@')) {
+      showAuthMessage(
+        'register',
+        'Please enter a valid email.'
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      showAuthMessage(
+        'register',
+        'Password must be at least 6 characters.'
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      showAuthMessage(
+        'register',
+        'Passwords do not match.'
+      );
+      return;
+    }
+
+    const users = getUsers();
+
+    const existingUser = users.find(
+      user => user.email === email
+    );
+
+    if (existingUser) {
+      showAuthMessage(
+        'register',
+        'An account with this email already exists.'
+      );
+      return;
+    }
+
+    const newUser = {
+      id: crypto.randomUUID(),
+      name: name,
+      email: email,
+
+      // Demo-only credential storage.
+      // Real production authentication must use a backend.
+      password: password,
+
+      balance: 1000,
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    saveUsers(users);
+
+    currentUser = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email
+    };
+
+    localStorage.setItem(
+      'skyrush_user',
+      JSON.stringify(currentUser)
+    );
+
+    balance = newUser.balance;
+
+    updateUserUI();
+
+    showAuthMessage(
+      'register',
+      'Account created successfully!',
+      true
+    );
+
+    setTimeout(() => {
+      closeModal('regModal');
+    }, 700);
+
+    return;
+  }
+
+
+  // =========================
+  // LOGIN
+  // =========================
+
+  if (type === 'login') {
+
+    const email = $('loginEmail').value.trim().toLowerCase();
+    const password = $('loginPass').value;
+
+    if (!email || !password) {
+      showAuthMessage(
+        'login',
+        'Enter your email and password.'
+      );
+      return;
+    }
+
+    const users = getUsers();
+
+    const user = users.find(
+      u => u.email === email
+    );
+
+    if (!user) {
+      showAuthMessage(
+        'login',
+        'No account found with that email.'
+      );
+      return;
+    }
+
+    if (user.password !== password) {
+      showAuthMessage(
+        'login',
+        'Incorrect password.'
+      );
+      return;
+    }
+
+    currentUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    };
+
+    localStorage.setItem(
+      'skyrush_user',
+      JSON.stringify(currentUser)
+    );
+
+    balance = Number(user.balance || 1000);
+
+    updateUserUI();
+
+    showAuthMessage(
+      'login',
+      'Login successful!',
+      true
+    );
+
+    setTimeout(() => {
+      closeModal('loginModal');
+    }, 700);
+  }
+}
+
+  function logout() {
+
+  // Save current balance before logging out
+  if (currentUser) {
+    const users = getUsers();
+
+    const index = users.findIndex(
+      user => user.id === currentUser.id
+    );
+
+    if (index !== -1) {
+      users[index].balance = balance;
+      saveUsers(users);
+    }
+  }
+
+  currentUser = null;
+
+  localStorage.removeItem('skyrush_user');
+
+  balance = 1000;
+
+  updateUserUI();
+
+  show('home');
+}
 
     function updateUserUI() {
       if (currentUser) {
@@ -723,13 +1015,44 @@
       }
     }
 
-    // Initialization
-    window.onload = () => {
-      resizeCanvas();
-      if (localStorage.skyrush_user) {
-        currentUser = JSON.parse(localStorage.skyrush_user);
-        updateUserUI();
-      }
+    // ===============================
+// RESTORE LOGGED-IN USER
+// ===============================
+
+const savedUser = localStorage.getItem('skyrush_user');
+
+if (savedUser) {
+
+  try {
+
+    currentUser = JSON.parse(savedUser);
+
+    const users = getUsers();
+
+    const user = users.find(
+      u => u.id === currentUser.id
+    );
+
+    if (user) {
+      balance = Number(user.balance || 1000);
+    } else {
+      currentUser = null;
+      localStorage.removeItem('skyrush_user');
+    }
+
+  } catch (error) {
+
+    console.error(
+      'Could not restore user session:',
+      error
+    );
+
+    currentUser = null;
+    localStorage.removeItem('skyrush_user');
+  }
+}
+
+updateUserUI();
       // Populate pills
       for (let i = 0; i < 8; i++) {
         let val = Math.max(1.01, Math.pow(Math.random(), 1.7) * 10 + 1.01);
