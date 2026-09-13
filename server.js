@@ -1,34 +1,37 @@
-require('dotenv').config();
-
-console.log("Loaded Key:", process.env.DARAJA_CONSUMER_KEY ? "YES" : "NO");
-console.log("Loaded Secret:", process.env.DARAJA_CONSUMER_SECRET ? "YES" : "NO");
-
 const express = require('express');
 const path = require('path');
 const axios = require('axios');
 
 const app = express();
 
-// Body Parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- AUTHENTICATION ---
-const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASS || "SecretPassword123";
+// ==========================================
+// 1. CONFIGURATION & DARAJA CREDENTIALS
+// ==========================================
 
-let platformStats = {
-  totalUsers: 0,
-  activePlayers: 0,
-  totalDeposited: 0,
-  totalPayouts: 0
-};
+// --- PASTE YOUR KEYS HERE FROM DARAJA PORTAL ---
+const DARAJA_CONSUMER_KEY = VxMgo3QTXOMgt0TSx7AektXTm6OeBR6iLvfMabWtlK4Bg633;
+const DARAJA_CONSUMER_SECRET = q6iMrVsXjIob0jtqnWkb1hZgXuJgKKTgaxCZAm5ZxfrhkPmxVMEum3jFS3elEzac;
 
-// Queue of crash points (Randomized between 1.05x and 12.00x)
+// --- DEFAULT SAFARICOM SANDBOX VALUES ---
+const DARAJA_SHORTCODE = "174379";
+const DARAJA_PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+const DARAJA_CALLBACK_URL = "https://mydomain.com/api/v1/mpesa/callback";
+
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "SecretPassword123";
+
+// ==========================================
+// 2. GAME ENGINE & DUAL SYNC
+// ==========================================
+let platformStats = { totalUsers: 0, activePlayers: 0, totalDeposited: 0, totalPayouts: 0 };
 let crashQueue = [];
+
 function generateCrashMultiplier() {
   const rand = Math.random();
-  if (rand < 0.05) return 1.00; // 5% house edge instant crash
+  if (rand < 0.05) return 1.00;
   return parseFloat((1.05 + Math.pow(Math.random(), 2) * 11).toFixed(2));
 }
 
@@ -36,10 +39,9 @@ for (let i = 0; i < 100; i++) {
   crashQueue.push(generateCrashMultiplier());
 }
 
-// Global Sync Engine (14-second loop cycle)
 let currentRoundIndex = 0;
 let roundStartTime = Date.now();
-const ROUND_DURATION_MS = 14000; 
+const ROUND_DURATION_MS = 14000;
 
 setInterval(() => {
   if (Date.now() - roundStartTime >= ROUND_DURATION_MS) {
@@ -49,20 +51,19 @@ setInterval(() => {
   }
 }, 50);
 
-// Unified State API for Game & Admin
 app.get('/api/live-state', (req, res) => {
   const elapsedTime = (Date.now() - roundStartTime) / 1000;
   res.json({
     elapsedTime: elapsedTime,
-    currentCrash: crashQueue[currentRoundIndex] || 1.00,       // Round 0 (Public)
-    nextCrash: crashQueue[currentRoundIndex + 1] || 1.00,       // Round +1 (Admin Simulator)
+    currentCrash: crashQueue[currentRoundIndex] || 1.00,
+    nextCrash: crashQueue[currentRoundIndex + 1] || 1.00,
     roundPlus2: crashQueue[currentRoundIndex + 2] || 1.00,
     roundPlus3: crashQueue[currentRoundIndex + 3] || 1.00,
     roundIndex: currentRoundIndex
   });
 });
 
-// Admin HTTP Basic Auth
+// Basic Auth Middleware
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -78,7 +79,7 @@ function adminAuth(req, res, next) {
   }
 }
 
-// Admin Control Center Dashboard Route
+// Admin UI
 app.get('/admin', adminAuth, (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -86,20 +87,17 @@ app.get('/admin', adminAuth, (req, res) => {
       <head>
         <title>SkyRush Control Center</title>
         <style>
-          body { font-family: system-ui, -apple-system, sans-serif; background: #0b0e14; color: #fff; padding: 25px; margin: 0; }
+          body { font-family: system-ui, sans-serif; background: #0b0e14; color: #fff; padding: 25px; margin: 0; }
           .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
           .card { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; }
           .card h3 { margin: 0 0 5px 0; color: #8b949e; font-size: 13px; }
           .card p { margin: 0; font-size: 22px; font-weight: bold; color: #00e676; }
-          
           .sim-container { display: flex; gap: 20px; flex-wrap: wrap; }
           .stage { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; flex: 1; min-width: 320px; }
           canvas { background: #0d1117; border-radius: 6px; width: 100%; height: 230px; display: block; }
-          
           .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
           .badge-live { background: #d32f2f; color: #fff; }
           .badge-future { background: #0288d1; color: #fff; }
-          
           .queue-list { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; margin-top: 20px; }
         </style>
       </head>
@@ -149,7 +147,6 @@ app.get('/admin', adminAuth, (req, res) => {
 
           function renderFlight(ctx, canvas, elapsed, targetMult, color, textId) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             let currentMult = parseFloat((1.00 + Math.pow(elapsed, 1.7) * 0.12).toFixed(2));
 
             if (currentMult < targetMult && elapsed < 10) {
@@ -208,28 +205,23 @@ app.get('/admin', adminAuth, (req, res) => {
   `);
 });
 
-// ===============================
-// M-PESA DARAJA SANDBOX STK PUSH
-// ===============================
+// ==========================================
+// 3. M-PESA DARAJA STK PUSH API
+// ==========================================
 
 async function getDarajaAccessToken() {
-  const consumerKey = process.env.DARAJA_CONSUMER_KEY;
-  const consumerSecret = process.env.DARAJA_CONSUMER_SECRET;
-
-  if (!consumerKey || !consumerSecret) {
-    throw new Error('Daraja credentials are missing from .env');
+  if (DARAJA_CONSUMER_KEY === "PASTE_YOUR_CONSUMER_KEY_HERE" || DARAJA_CONSUMER_SECRET === "PASTE_YOUR_CONSUMER_SECRET_HERE") {
+    throw new Error('Please replace PASTE_YOUR_CONSUMER_KEY_HERE and PASTE_YOUR_CONSUMER_SECRET_HERE with your real Daraja keys in server.js');
   }
 
   const credentials = Buffer
-    .from(`${consumerKey}:${consumerSecret}`)
+    .from(`${DARAJA_CONSUMER_KEY}:${DARAJA_CONSUMER_SECRET}`)
     .toString('base64');
 
   const response = await axios.get(
     'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
     {
-      headers: {
-        Authorization: `Basic ${credentials}`
-      }
+      headers: { Authorization: `Basic ${credentials}` }
     }
   );
 
@@ -253,52 +245,37 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
     const { phone, amount } = req.body;
 
     if (!phone || !amount) {
-      return res.status(400).json({
-        error: 'Phone number and amount are required'
-      });
+      return res.status(400).json({ error: 'Phone number and amount are required' });
     }
 
     const numericAmount = Number(amount);
-
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({
-        error: 'Amount must be greater than 0'
-      });
+      return res.status(400).json({ error: 'Amount must be greater than 0' });
     }
 
     const accessToken = await getDarajaAccessToken();
     const timestamp = createTimestamp();
-    const shortcode = process.env.DARAJA_SHORTCODE;
-    const passkey = process.env.DARAJA_PASSKEY;
-
-    if (!shortcode || !passkey) {
-      throw new Error('DARAJA_SHORTCODE or DARAJA_PASSKEY is missing');
-    }
 
     const password = Buffer
-      .from(`${shortcode}${passkey}${timestamp}`)
+      .from(`${DARAJA_SHORTCODE}${DARAJA_PASSKEY}${timestamp}`)
       .toString('base64');
 
     let formattedPhone = String(phone).replace(/\s+/g, '');
-    if (formattedPhone.startsWith('+')) {
-      formattedPhone = formattedPhone.substring(1);
-    }
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '254' + formattedPhone.substring(1);
-    }
+    if (formattedPhone.startsWith('+')) formattedPhone = formattedPhone.substring(1);
+    if (formattedPhone.startsWith('0')) formattedPhone = '254' + formattedPhone.substring(1);
 
     const stkResponse = await axios.post(
       'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
       {
-        BusinessShortCode: shortcode,
+        BusinessShortCode: DARAJA_SHORTCODE,
         Password: password,
         Timestamp: timestamp,
         TransactionType: 'CustomerPayBillOnline',
         Amount: Math.round(numericAmount),
         PartyA: formattedPhone,
-        PartyB: shortcode,
+        PartyB: DARAJA_SHORTCODE,
         PhoneNumber: formattedPhone,
-        CallBackURL: process.env.DARAJA_CALLBACK_URL,
+        CallBackURL: DARAJA_CALLBACK_URL,
         AccountReference: 'SkyRushDemo',
         TransactionDesc: 'SkyRush Sandbox Test'
       },
@@ -310,6 +287,8 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
       }
     );
 
+    console.log('Daraja STK Response:', stkResponse.data);
+
     res.json({
       success: true,
       message: 'STK Push request sent',
@@ -317,31 +296,24 @@ app.post('/api/v1/mpesa/stkpush', async (req, res) => {
     });
 
   } catch (error) {
-    console.error(
-      'Daraja STK Error:',
-      error.response?.data || error.message
-    );
+    const errorDetails = error.response?.data || error.message;
+    console.error('Daraja STK Error:', errorDetails);
 
     res.status(500).json({
       success: false,
-      error:
-        error.response?.data?.errorMessage ||
-        error.response?.data?.errorCode ||
-        error.message ||
-        'STK Push failed'
+      error: error.response?.data?.errorMessage || error.response?.data?.errorCode || error.message || 'STK Push failed'
     });
   }
 });
 
 app.post('/api/v1/mpesa/callback', (req, res) => {
   console.log('M-Pesa Callback:', JSON.stringify(req.body, null, 2));
-  res.json({
-    ResultCode: 0,
-    ResultDesc: 'Accepted'
-  });
+  res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 });
 
-// Static Middleware & Catch-All placed strictly AFTER API Routes
+// ==========================================
+// 4. STATIC SERVING & STARTUP
+// ==========================================
 app.use(express.static(path.join(__dirname, './')));
 
 app.get('*', (req, res) => {
@@ -349,4 +321,7 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Admin dashboard available at http://localhost:${PORT}/admin`);
+});
