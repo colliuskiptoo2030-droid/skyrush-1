@@ -12,8 +12,8 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================================
 
 // --- PASTE YOUR KEYS HERE FROM DARAJA PORTAL ---
-const DARAJA_CONSUMER_KEY = VxMgo3QTXOMgt0TSx7AektXTm6OeBR6iLvfMabWtlK4Bg633;
-const DARAJA_CONSUMER_SECRET = q6iMrVsXjIob0jtqnWkb1hZgXuJgKKTgaxCZAm5ZxfrhkPmxVMEum3jFS3elEzac;
+const DARAJA_CONSUMER_KEY = "VxMgo3QTXOMgt0TSx7AektXTm6OeBR6iLvfMabWtlK4Bg633";
+const DARAJA_CONSUMER_SECRET = "q6iMrVsXjIob0jtqnWkb1hZgXuJgKKTgaxCZAm5ZxfrhkPmxVMEum3jFS3elEzac";
 
 // --- DEFAULT SAFARICOM SANDBOX VALUES ---
 const DARAJA_SHORTCODE = "174379";
