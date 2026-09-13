@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+console.log("Loaded Key:", process.env.DARAJA_CONSUMER_KEY ? "YES" : "NO");
+console.log("Loaded Secret:", process.env.DARAJA_CONSUMER_SECRET ? "YES" : "NO");
+
 const express = require('express');
 const path = require('path');
 const axios = require('axios');
