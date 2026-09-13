@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, './')));
 
-// --- ADMIN CREDENTIALS ---
+// --- AUTHENTICATION ---
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASS = process.env.ADMIN_PASS || "SecretPassword123";
 
@@ -16,23 +16,22 @@ let platformStats = {
   totalPayouts: 0
 };
 
-// Queue of crash points
+// Queue of crash points (Randomized between 1.05x and 12.00x)
 let crashQueue = [];
 function generateCrashMultiplier() {
-  // Generates realistic crash odds (1.05x to 15.00x)
   const rand = Math.random();
-  if (rand < 0.05) return 1.00; // House edge instant crash
-  return parseFloat((1.05 + Math.pow(Math.random(), 2) * 14).toFixed(2));
+  if (rand < 0.05) return 1.00; // 5% house edge instant crash
+  return parseFloat((1.05 + Math.pow(Math.random(), 2) * 11).toFixed(2));
 }
 
-for (let i = 0; i < 50; i++) {
+for (let i = 0; i < 100; i++) {
   crashQueue.push(generateCrashMultiplier());
 }
 
-// Global Live Game Loop Engine
+// Global Sync Engine (14-second loop cycle)
 let currentRoundIndex = 0;
 let roundStartTime = Date.now();
-const ROUND_DURATION_MS = 14000; // 14 seconds per round cycle
+const ROUND_DURATION_MS = 14000; 
 
 setInterval(() => {
   if (Date.now() - roundStartTime >= ROUND_DURATION_MS) {
@@ -40,22 +39,22 @@ setInterval(() => {
     roundStartTime = Date.now();
     crashQueue.push(generateCrashMultiplier());
   }
-}, 100);
+}, 50);
 
-// API Shared by both the main game and admin panel
+// Unified State API for Game & Admin
 app.get('/api/live-state', (req, res) => {
   const elapsedTime = (Date.now() - roundStartTime) / 1000;
   res.json({
     elapsedTime: elapsedTime,
-    currentCrash: crashQueue[currentRoundIndex],          // Public Live Round (Round 0)
-    roundPlus1: crashQueue[currentRoundIndex + 1],        // Immediate Next Round (Round +1)
+    currentCrash: crashQueue[currentRoundIndex],       // Round 0 (Public)
+    nextCrash: crashQueue[currentRoundIndex + 1],       // Round +1 (Admin Simulator)
     roundPlus2: crashQueue[currentRoundIndex + 2],
     roundPlus3: crashQueue[currentRoundIndex + 3],
     roundIndex: currentRoundIndex
   });
 });
 
-// Basic HTTP Auth
+// Admin HTTP Basic Auth
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -71,7 +70,7 @@ function adminAuth(req, res, next) {
   }
 }
 
-// Secret Admin Dashboard Route
+// Admin Control Center Dashboard Route
 app.get('/admin', adminAuth, (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -79,7 +78,7 @@ app.get('/admin', adminAuth, (req, res) => {
       <head>
         <title>SkyRush Control Center</title>
         <style>
-          body { font-family: -apple-system, sans-serif; background: #0b0e14; color: #fff; padding: 25px; margin: 0; }
+          body { font-family: system-ui, -apple-system, sans-serif; background: #0b0e14; color: #fff; padding: 25px; margin: 0; }
           .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
           .card { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; }
           .card h3 { margin: 0 0 5px 0; color: #8b949e; font-size: 13px; }
@@ -87,7 +86,7 @@ app.get('/admin', adminAuth, (req, res) => {
           
           .sim-container { display: flex; gap: 20px; flex-wrap: wrap; }
           .stage { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; flex: 1; min-width: 320px; }
-          canvas { background: #0d1117; border-radius: 6px; width: 100%; height: 220px; }
+          canvas { background: #0d1117; border-radius: 6px; width: 100%; height: 230px; }
           
           .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
           .badge-live { background: #d32f2f; color: #fff; }
@@ -98,7 +97,7 @@ app.get('/admin', adminAuth, (req, res) => {
       </head>
       <body>
         <h1>SkyRush Control Center</h1>
-        <p style="color: #8b949e; margin-bottom: 20px;">Synchronized Real-Time Flight & Next Round Preview</p>
+        <p style="color: #8b949e; margin-bottom: 20px;">Synchronized Dual-Engine Flight Control</p>
 
         <div class="grid">
           <div class="card"><h3>Total Registered</h3><p>${platformStats.totalUsers}</p></div>
@@ -108,33 +107,32 @@ app.get('/admin', adminAuth, (req, res) => {
         </div>
 
         <div class="sim-container">
-          <!-- PUBLIC LIVE ROUND (EXACT MATCH) -->
+          <!-- PUBLIC LIVE CANVASES -->
           <div class="stage">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <h3>Public Live Screen (Current Users)</h3>
+              <h3>Public Live Screen (Current Round)</h3>
               <span class="badge badge-live" id="roundTag">ROUND #0</span>
             </div>
-            <canvas id="liveCanvas"></canvas>
+            <canvas id="liveCanvas" width="500" height="230"></canvas>
             <h2 id="liveText" style="text-align:center; color:#00e676; margin:10px 0 0 0;">1.00x</h2>
           </div>
 
-          <!-- ADMIN PREVIEW (EXACT IMMEDIATE NEXT ROUND) -->
+          <!-- ADMIN PREVIEW CANVASES -->
           <div class="stage">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <h3>Admin Preview (Immediate Next Round)</h3>
-              <span class="badge badge-future" id="nextRoundTag">ROUND #1 PREVIEW</span>
+              <h3>Admin Simulator (Immediate Next Round)</h3>
+              <span class="badge badge-future" id="nextTag">ROUND #1 PREVIEW</span>
             </div>
-            <canvas id="simCanvas"></canvas>
+            <canvas id="simCanvas" width="500" height="230"></canvas>
             <h2 id="simText" style="text-align:center; color:#29b6f6; margin:10px 0 0 0;">1.00x</h2>
           </div>
         </div>
 
         <div class="queue-list">
-          <h3 style="margin-top:0; color:#00e676;">Upcoming Round Multipliers</h3>
-          <p><strong>Public Current Round Target:</strong> <span id="q0" style="color:#00e676; font-weight:bold;">--</span></p>
-          <p><strong>Immediate Next Round (Admin Canvas):</strong> <span id="q1" style="color:#29b6f6; font-weight:bold;">--</span></p>
+          <h3 style="margin-top:0; color:#00e676;">Next Multiplier Targets</h3>
+          <p><strong>Public Current Target:</strong> <span id="q0" style="color:#00e676; font-weight:bold;">--</span></p>
+          <p><strong>Immediate Next Round Target (Admin Canvas):</strong> <span id="q1" style="color:#29b6f6; font-weight:bold;">--</span></p>
           <p><strong>Round +2 Target:</strong> <span id="q2">--</span></p>
-          <p><strong>Round +3 Target:</strong> <span id="q3">--</span></p>
         </div>
 
         <script>
@@ -143,26 +141,26 @@ app.get('/admin', adminAuth, (req, res) => {
           const ctxLive = liveCanvas.getContext('2d');
           const ctxSim = simCanvas.getContext('2d');
 
-          function drawPlane(ctx, canvas, elapsed, targetMult, color, textId) {
+          function renderFlight(ctx, canvas, elapsed, targetMult, color, textId) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Curve flight physics calculation matching index.html
-            let currentMult = parseFloat((1.00 + Math.pow(elapsed, 1.8) * 0.15).toFixed(2));
-            
+            // Shared exact exponential curve calculation
+            let currentMult = parseFloat((1.00 + Math.pow(elapsed, 1.7) * 0.12).toFixed(2));
+
             if (currentMult < targetMult && elapsed < 10) {
               let progress = Math.min(1, elapsed / 10);
-              const x = 10 + (progress * (canvas.width - 40));
-              const y = (canvas.height - 10) - (Math.pow(progress, 0.8) * (canvas.height - 40));
+              const x = 20 + (progress * (canvas.width - 50));
+              const y = (canvas.height - 20) - (Math.pow(progress, 0.85) * (canvas.height - 50));
 
-              // Flight Trail Line
+              // Curve Line
               ctx.beginPath();
-              ctx.moveTo(10, canvas.height - 10);
-              ctx.quadraticCurveTo(x / 2, canvas.height - 10, x, y);
+              ctx.moveTo(20, canvas.height - 20);
+              ctx.quadraticCurveTo(x / 2, canvas.height - 20, x, y);
               ctx.strokeStyle = color;
               ctx.lineWidth = 4;
               ctx.stroke();
 
-              // Flying Rocket Head
+              // Rocket Node
               ctx.fillStyle = "#ffffff";
               ctx.beginPath();
               ctx.arc(x, y, 6, 0, Math.PI * 2);
@@ -171,39 +169,38 @@ app.get('/admin', adminAuth, (req, res) => {
               document.getElementById(textId).innerText = currentMult.toFixed(2) + "x";
               document.getElementById(textId).style.color = color;
             } else {
-              // Crashed / Flew Away state
+              // Crashed state
               ctx.fillStyle = "#ff1744";
               ctx.font = "bold 18px sans-serif";
               ctx.textAlign = "center";
               ctx.fillText("FLEW AWAY @ " + targetMult.toFixed(2) + "x", canvas.width / 2, canvas.height / 2);
+              
               document.getElementById(textId).innerText = "FLEW AWAY @ " + targetMult.toFixed(2) + "x";
               document.getElementById(textId).style.color = "#ff1744";
             }
           }
 
-          async function syncScreens() {
+          async function syncEngine() {
             try {
               const res = await fetch('/api/live-state');
               const data = await res.json();
 
               document.getElementById('roundTag').innerText = "ROUND #" + data.roundIndex;
-              document.getElementById('nextRoundTag').innerText = "ROUND #" + (data.roundIndex + 1) + " (NEXT)";
+              document.getElementById('nextTag').innerText = "ROUND #" + (data.roundIndex + 1) + " (PREVIEW)";
               
               document.getElementById('q0').innerText = data.currentCrash.toFixed(2) + "x";
-              document.getElementById('q1').innerText = data.roundPlus1.toFixed(2) + "x";
+              document.getElementById('q1').innerText = data.nextCrash.toFixed(2) + "x";
               document.getElementById('q2').innerText = data.roundPlus2.toFixed(2) + "x";
-              document.getElementById('q3').innerText = data.roundPlus3.toFixed(2) + "x";
 
-              // Synchronized live flight renders
-              drawPlane(ctxLive, liveCanvas, data.elapsedTime, data.currentCrash, '#00e676', 'liveText');
-              drawPlane(ctxSim, simCanvas, data.elapsedTime, data.roundPlus1, '#29b6f6', 'simText');
+              // Both render in parallel on Option A model
+              renderFlight(ctxLive, liveCanvas, data.elapsedTime, data.currentCrash, '#00e676', 'liveText');
+              renderFlight(ctxSim, simCanvas, data.elapsedTime, data.nextCrash, '#29b6f6', 'simText');
             } catch (e) {
-              console.error("Sync error:", e);
+              console.error(e);
             }
           }
 
-          // 60FPS sync polling
-          setInterval(syncScreens, 100);
+          setInterval(syncEngine, 50);
         </script>
       </body>
     </html>
