@@ -211,10 +211,159 @@ app.get('/admin', adminAuth, (req, res) => {
   `);
 });
 
-app.post('/api/v1/mpesa/stkpush', (req, res) => {
-  const { amount } = req.body;
-  platformStats.totalDeposited += Number(amount) || 0;
-  res.json({ status: 'Success' });
+// ===============================
+// M-PESA DARAJA SANDBOX STK PUSH
+// ===============================
+
+async function getDarajaAccessToken() {
+  const consumerKey = process.env.DARAJA_CONSUMER_KEY;
+  const consumerSecret = process.env.DARAJA_CONSUMER_SECRET;
+
+  if (!consumerKey || !consumerSecret) {
+    throw new Error('Daraja credentials are missing from .env');
+  }
+
+  const credentials = Buffer
+    .from(`${consumerKey}:${consumerSecret}`)
+    .toString('base64');
+
+  const response = await axios.get(
+    'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+    {
+      headers: {
+        Authorization: `Basic ${credentials}`
+      }
+    }
+  );
+
+  return response.data.access_token;
+}
+
+
+function createTimestamp() {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  return `${year}${month}${day}${hours}${minutes}${seconds}`;
+}
+
+
+app.post('/api/v1/mpesa/stkpush', async (req, res) => {
+  try {
+    const { phone, amount } = req.body;
+
+    if (!phone || !amount) {
+      return res.status(400).json({
+        error: 'Phone number and amount are required'
+      });
+    }
+
+    const numericAmount = Number(amount);
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({
+        error: 'Amount must be greater than 0'
+      });
+    }
+
+    // Get Daraja access token
+    const accessToken = await getDarajaAccessToken();
+
+    const timestamp = createTimestamp();
+
+    const shortcode = process.env.DARAJA_SHORTCODE;
+    const passkey = process.env.DARAJA_PASSKEY;
+
+    if (!shortcode || !passkey) {
+      throw new Error('DARAJA_SHORTCODE or DARAJA_PASSKEY is missing');
+    }
+
+    // Daraja password
+    const password = Buffer
+      .from(`${shortcode}${passkey}${timestamp}`)
+      .toString('base64');
+
+    // Ensure Kenyan phone number is in 254XXXXXXXXX format
+    let formattedPhone = String(phone).replace(/\s+/g, '');
+
+    if (formattedPhone.startsWith('+')) {
+      formattedPhone = formattedPhone.substring(1);
+    }
+
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.substring(1);
+    }
+
+    const stkResponse = await axios.post(
+      'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+      {
+        BusinessShortCode: shortcode,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: 'CustomerPayBillOnline',
+        Amount: Math.round(numericAmount),
+        PartyA: formattedPhone,
+        PartyB: shortcode,
+        PhoneNumber: formattedPhone,
+        CallBackURL: process.env.DARAJA_CALLBACK_URL,
+        AccountReference: 'SkyRushDemo',
+        TransactionDesc: 'SkyRush Sandbox Test'
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log('Daraja STK Response:', stkResponse.data);
+
+    res.json({
+      success: true,
+      message: 'STK Push request sent',
+      data: stkResponse.data
+    });
+
+  } catch (error) {
+    console.error(
+      'Daraja STK Error:',
+      error.response?.data || error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      error:
+        error.response?.data?.errorMessage ||
+        error.response?.data?.errorCode ||
+        error.message ||
+        'STK Push failed'
+    });
+  }
+});
+
+
+// ===============================
+// DARAJA CALLBACK
+// ===============================
+
+app.post('/api/v1/mpesa/callback', (req, res) => {
+  console.log(
+    'M-Pesa Callback:',
+    JSON.stringify(req.body, null, 2)
+  );
+
+  // Always acknowledge the callback
+  res.json({
+    ResultCode: 0,
+    ResultDesc: 'Accepted'
+  });
 });
 
 app.get('*', (req, res) => {
